@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Transcriber</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .section-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .row:last-child {
+            margin-bottom: 0;
+        }
+        label {
+            font-size: 14px;
+            color: #555;
+            min-width: 80px;
+        }
+        input[type="text"], input[type="number"], select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        input[type="text"] {
+            flex: 1;
+            min-width: 200px;
+        }
+        input[type="number"] {
+            width: 80px;
+        }
+        input[type="color"] {
+            width: 50px;
+            height: 36px;
+            padding: 2px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        select {
+            min-width: 120px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        button.secondary {
+            background: #6c757d;
+        }
+        button.secondary:hover {
+            background: #545b62;
+        }
+        .console {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 12px;
+            padding: 15px;
+            border-radius: 6px;
+            height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .console .status {
+            color: #569cd6;
+        }
+        .console .segment {
+            color: #6a9955;
+        }
+        .console .error {
+            color: #f44747;
+        }
+        .console .complete {
+            color: #4ec9b0;
+        }
+        textarea {
+            width: 100%;
+            height: 300px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            resize: vertical;
+        }
+        .style-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .style-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .style-item label {
+            min-width: 100px;
+        }
+        .hidden {
+            display: none;
+        }
+        #srtPath {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Video Transcriber</h1>
+
+    <!-- Transcribe Section -->
+    <div class="section">
+        <div class="section-title">1. Transcribe</div>
+        <div class="row">
+            <label>Video path:</label>
+            <input type="text" id="videoPath" placeholder="/path/to/video.mp4">
+            <button type="button" class="secondary" onclick="browseVideo()">Browse</button>
+        </div>
+        <div class="row">
+            <label>Model:</label>
+            <select id="model">
+                <option value="tiny">tiny</option>
+                <option value="base">base</option>
+                <option value="small">small</option>
+                <option value="medium" selected>medium</option>
+                <option value="large-v2">large-v2</option>
+                <option value="large-v3">large-v3</option>
+            </select>
+            <label>Max words:</label>
+            <input type="number" id="maxWords" value="5" min="1" max="20">
+        </div>
+        <div class="row">
+            <button type="button" id="transcribeBtn" onclick="startTranscribe()">Transcribe</button>
+        </div>
+        <div class="section-title" style="margin-top: 20px;">Output</div>
+        <div class="console" id="transcribeOutput"></div>
+    </div>
+
+    <!-- SRT Editor Section -->
+    <div class="section">
+        <div class="section-title">2. Edit SRT</div>
+        <textarea id="srtEditor" placeholder="SRT content will appear here after transcription..."></textarea>
+        <div id="srtPath"></div>
+        <div class="row" style="margin-top: 15px;">
+            <button type="button" id="saveBtn" onclick="saveSrt()">Save SRT</button>
+        </div>
+    </div>
+
+    <!-- Burn Captions Section -->
+    <div class="section">
+        <div class="section-title">3. Burn Captions</div>
+        <div class="section-title" style="border: none; margin-bottom: 10px; padding-bottom: 0;">Subtitle Style</div>
+        <div class="style-grid">
+            <div class="style-item">
+                <label>Font size:</label>
+                <input type="number" id="fontSize" value="16" min="8" max="72">
+            </div>
+            <div class="style-item">
+                <label>Outline:</label>
+                <input type="number" id="outline" value="3" min="0" max="10">
+            </div>
+            <div class="style-item">
+                <label>Margin V:</label>
+                <input type="number" id="marginV" value="50" min="0" max="200">
+            </div>
+            <div class="style-item">
+                <label>Font:</label>
+                <select id="fontName">
+                    <option value="Arial Bold" selected>Arial Bold</option>
+                    <option value="Arial">Arial</option>
+                    <option value="Helvetica">Helvetica</option>
+                    <option value="Helvetica Bold">Helvetica Bold</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Verdana">Verdana</option>
+                </select>
+            </div>
+            <div class="style-item">
+                <label>Alignment:</label>
+                <select id="alignment">
+                    <option value="1">1 - Bottom Left</option>
+                    <option value="2">2 - Bottom Center</option>
+                    <option value="3">3 - Bottom Right</option>
+                    <option value="5">5 - Top Left</option>
+                    <option value="6">6 - Top Center</option>
+                    <option value="7">7 - Top Right</option>
+                    <option value="9">9 - Middle Left</option>
+                    <option value="10" selected>10 - Middle Center</option>
+                    <option value="11">11 - Middle Right</option>
+                </select>
+            </div>
+            <div class="style-item">
+                <label>Text color:</label>
+                <input type="color" id="textColor" value="#FFFFFF">
+            </div>
+            <div class="style-item">
+                <label>Outline color:</label>
+                <input type="color" id="outlineColor" value="#000000">
+            </div>
+        </div>
+        <div class="row" style="margin-top: 20px;">
+            <button type="button" id="burnBtn" onclick="startBurn()">Burn Captions</button>
+        </div>
+        <div class="section-title" style="margin-top: 20px;">FFmpeg Output</div>
+        <div class="console" id="burnOutput"></div>
+    </div>
+
+    <script>
+        let currentSrtPath = '';
+
+        async function browseVideo() {
+            try {
+                const response = await fetch('/select-video');
+                const data = await response.json();
+                if (data.path) {
+                    document.getElementById('videoPath').value = data.path;
+                } else if (data.error) {
+                    alert(data.error);
+                }
+            } catch (error) {
+                console.error('Error selecting video:', error);
+                alert('File dialog not available. Please enter the path manually.');
+            }
+        }
+
+        function startTranscribe() {
+            const videoPath = document.getElementById('videoPath').value.trim();
+            if (!videoPath) {
+                alert('Please enter a video path');
+                return;
+            }
+
+            const model = document.getElementById('model').value;
+            const maxWords = document.getElementById('maxWords').value;
+
+            const output = document.getElementById('transcribeOutput');
+            output.innerHTML = '';
+
+            const btn = document.getElementById('transcribeBtn');
+            btn.disabled = true;
+            btn.textContent = 'Transcribing...';
+
+            const eventSource = new EventSource('/transcribe?' + new URLSearchParams({
+                video_path: videoPath,
+                model: model,
+                max_words: maxWords
+            }));
+
+            // Use POST with fetch for the request body
+            fetch('/transcribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    video_path: videoPath,
+                    model: model,
+                    max_words: maxWords || null
+                })
+            }).then(response => {
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                function read() {
+                    reader.read().then(({ done, value }) => {
+                        if (done) {
+                            btn.disabled = false;
+                            btn.textContent = 'Transcribe';
+                            return;
+                        }
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop();
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const data = JSON.parse(line.slice(6));
+                                    handleTranscribeMessage(data, output);
+                                } catch (e) {
+                                    console.error('Parse error:', e);
+                                }
+                            }
+                        }
+
+                        read();
+                    });
+                }
+
+                read();
+            }).catch(error => {
+                output.innerHTML += `<span class="error">Error: ${error.message}</span>\n`;
+                btn.disabled = false;
+                btn.textContent = 'Transcribe';
+            });
+        }
+
+        function handleTranscribeMessage(data, output) {
+            if (data.type === 'status') {
+                output.innerHTML += `<span class="status">${data.message}</span>\n`;
+            } else if (data.type === 'segment') {
+                output.innerHTML += `<span class="segment">[${data.time}] ${data.text}</span>\n`;
+            } else if (data.type === 'complete') {
+                output.innerHTML += `<span class="complete">Saved to ${data.srt_path}</span>\n`;
+                currentSrtPath = data.srt_path;
+                document.getElementById('srtPath').textContent = `File: ${currentSrtPath}`;
+                loadSrt(data.srt_path);
+            } else if (data.type === 'error') {
+                output.innerHTML += `<span class="error">${data.message}</span>\n`;
+            }
+            output.scrollTop = output.scrollHeight;
+        }
+
+        async function loadSrt(path) {
+            try {
+                const response = await fetch(`/srt?path=${encodeURIComponent(path)}`);
+                const data = await response.json();
+                if (data.content !== undefined) {
+                    document.getElementById('srtEditor').value = data.content;
+                    currentSrtPath = data.path;
+                    document.getElementById('srtPath').textContent = `File: ${currentSrtPath}`;
+                } else if (data.error) {
+                    alert(data.error);
+                }
+            } catch (error) {
+                console.error('Error loading SRT:', error);
+            }
+        }
+
+        async function saveSrt() {
+            if (!currentSrtPath) {
+                alert('No SRT file loaded');
+                return;
+            }
+
+            const content = document.getElementById('srtEditor').value;
+
+            try {
+                const response = await fetch('/srt', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        path: currentSrtPath,
+                        content: content
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert('SRT saved successfully');
+                } else if (data.error) {
+                    alert(data.error);
+                }
+            } catch (error) {
+                console.error('Error saving SRT:', error);
+                alert('Error saving SRT: ' + error.message);
+            }
+        }
+
+        function startBurn() {
+            const videoPath = document.getElementById('videoPath').value.trim();
+            if (!videoPath) {
+                alert('Please enter a video path');
+                return;
+            }
+            if (!currentSrtPath) {
+                alert('No SRT file loaded. Please transcribe first or load an existing SRT.');
+                return;
+            }
+
+            const output = document.getElementById('burnOutput');
+            output.innerHTML = '';
+
+            const btn = document.getElementById('burnBtn');
+            btn.disabled = true;
+            btn.textContent = 'Burning...';
+
+            fetch('/burn', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    video_path: videoPath,
+                    srt_path: currentSrtPath,
+                    font_size: parseInt(document.getElementById('fontSize').value),
+                    font_name: document.getElementById('fontName').value,
+                    text_color: document.getElementById('textColor').value.slice(1),
+                    outline_color: document.getElementById('outlineColor').value.slice(1),
+                    outline: parseInt(document.getElementById('outline').value),
+                    alignment: parseInt(document.getElementById('alignment').value),
+                    margin_v: parseInt(document.getElementById('marginV').value)
+                })
+            }).then(response => {
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                function read() {
+                    reader.read().then(({ done, value }) => {
+                        if (done) {
+                            btn.disabled = false;
+                            btn.textContent = 'Burn Captions';
+                            return;
+                        }
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop();
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const data = JSON.parse(line.slice(6));
+                                    handleBurnMessage(data, output);
+                                } catch (e) {
+                                    console.error('Parse error:', e);
+                                }
+                            }
+                        }
+
+                        read();
+                    });
+                }
+
+                read();
+            }).catch(error => {
+                output.innerHTML += `<span class="error">Error: ${error.message}</span>\n`;
+                btn.disabled = false;
+                btn.textContent = 'Burn Captions';
+            });
+        }
+
+        function handleBurnMessage(data, output) {
+            if (data.type === 'status') {
+                output.innerHTML += `<span class="status">${data.message}</span>\n`;
+            } else if (data.type === 'progress') {
+                output.innerHTML += `${data.message}\n`;
+            } else if (data.type === 'complete') {
+                output.innerHTML += `<span class="complete">Complete! Output: ${data.output_path}</span>\n`;
+            } else if (data.type === 'error') {
+                output.innerHTML += `<span class="error">${data.message}</span>\n`;
+            }
+            output.scrollTop = output.scrollHeight;
+        }
+    </script>
+</body>
+</html>

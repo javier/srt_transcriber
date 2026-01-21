@@ -47,3 +47,35 @@ Style options:
 - `Outline` - black outline thickness (2-4)
 - `Alignment=10` - centered horizontally, middle of screen vertically
 - `MarginV` - vertical offset (higher = lower on screen)
+
+## Web Interface
+
+A local web app provides a 3-step workflow: transcribe, edit, and burn captions.
+
+![Web Interface](transcriber_screenshot.png)
+
+### Running the Web App
+
+```bash
+python app.py
+```
+
+Then open http://127.0.0.1:5000 in your browser.
+
+### Features
+
+1. **Transcribe** - Select a video file, choose model and max words, then transcribe with real-time streaming output
+2. **Edit** - Review and edit the generated SRT file directly in the browser
+3. **Burn** - Customize subtitle styling (font, size, colors, position) and burn captions into the video
+
+The output video is saved as `{original_name}_captions_{timestamp}.mp4` in the same folder as the source video.
+
+### Requirements
+
+- Python 3.9+ with tkinter (for native file picker)
+- ffmpeg installed on your system
+
+On macOS with Homebrew Python, install tkinter support:
+```bash
+brew install python-tk@3.9
+```
