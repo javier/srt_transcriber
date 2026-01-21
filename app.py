@@ -162,7 +162,7 @@ def burn():
         return {"error": f"SRT not found: {srt_path}"}, 404
 
     # Generate output filename with timestamp
-    timestamp = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+    timestamp = datetime.now().strftime('%Y%m%dT%H%M%S')
     output_path = video_path.parent / f"{video_path.stem}_captions_{timestamp}{video_path.suffix}"
 
     # Build ffmpeg force_style string
